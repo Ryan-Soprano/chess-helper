@@ -6,6 +6,8 @@ import os
 class ChessEngine:
     """Interface for chess engine analysis using Stockfish."""
     
+    # CONSTRUCTOR
+    
     def __init__(self, stockfish_path: Optional[str] = None, depth: int = 15):
         """
         Initialize the chess engine.
@@ -21,42 +23,8 @@ class ChessEngine:
         # Try to initialize Stockfish
         self._initialize_engine()
         
-    def _initialize_engine(self):
-        """Initialize the Stockfish engine."""
-        try:
-            if self.engine_path and os.path.exists(self.engine_path):
-                self.stockfish = Stockfish(path=self.engine_path)
-                print(f"Stockfish engine initialized at: {self.engine_path}")
-            else:
-                # Direct path to stockfish.exe in the project directory
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                stockfish_path = os.path.join(current_dir, "stockfish.exe")
-                
-                if os.path.exists(stockfish_path):
-                    self.stockfish = Stockfish(path=stockfish_path)
-                    self.engine_path = stockfish_path
-                    print(f"Stockfish engine initialized at: {stockfish_path}")
-                else:
-                    # Fallback: try system PATH
-                    try:
-                        self.stockfish = Stockfish(path="stockfish")
-                        self.engine_path = "stockfish"
-                        print("Stockfish engine initialized from system PATH")
-                    except:
-                        self.stockfish = None
-                        
-            if self.stockfish is None:
-                print("Warning: Could not initialize Stockfish engine.")
-                print("Ensure stockfish.exe is in the project directory or system PATH.")
-                return
-                
-            # Configure engine settings
-            self.stockfish.set_depth(self.depth)
-            print(f"Stockfish engine initialized successfully at: {self.engine_path}")
-            
-        except Exception as e:
-            print(f"Error initializing engine: {e}")
-            self.stockfish = None
+    
+    # CORE ENGINE FUNCTIONS
     
     def is_available(self) -> bool:
         """Check if the engine is available for analysis."""
@@ -72,15 +40,6 @@ class ChessEngine:
             # Engine has crashed, mark as unavailable
             self.stockfish = None
             return False
-    
-    def recover_engine(self) -> bool:
-        """Attempt to recover from engine crash by reinitializing."""
-        if self.stockfish is not None:
-            return True  # Engine is fine
-        
-        print("Attempting to recover Stockfish engine...")
-        self._initialize_engine()
-        return self.stockfish is not None
     
     def get_best_move(self, fen: str) -> Optional[str]:
         """
@@ -138,6 +97,30 @@ class ChessEngine:
             self.stockfish = None
             return None
     
+    def analyze_position(self, fen: str) -> Dict:
+        """
+        Comprehensive position analysis.
+        
+        Args:
+            fen: Position in FEN notation
+            
+        Returns:
+            Dictionary with analysis results
+        """
+        if not self.is_available():
+            return {'error': 'Engine not available'}
+        
+        analysis = {
+            'best_move': self.get_best_move(fen),
+            'evaluation': self.get_evaluation(fen),
+            'top_moves': self.get_top_moves(fen, 3),
+            'fen': fen
+        }
+        
+        return analysis
+    
+    # ADVANCED ANALYSIS FUNCTIONS
+
     def get_top_moves(self, fen: str, num_moves: int = 3) -> List[Dict]:
         """
         Get top moves with evaluations.
@@ -173,28 +156,60 @@ class ChessEngine:
             self.stockfish = None
             return []
     
-    def analyze_position(self, fen: str) -> Dict:
+    def analyze_multiple_positions(self, fen_list: List[str]) -> List[Dict]:
+        """Analyze multiple positions efficiently."""
+        results = []
+        for fen in fen_list:
+            analysis = self.analyze_position(fen)
+            results.append(analysis)
+        return results
+
+    # CONFIGURATION FUNCTIONS
+    
+    def configure_for_game_analysis(self):
+        """Configure engine for live game analysis (faster, less depth)."""
+        if self.is_available():
+            self.stockfish.set_depth(10)  # Faster for real-time
+            self.stockfish.set_time(0.5)   # Quick analysis
+            print("Engine configured for live game analysis")
+
+    def configure_for_deep_analysis(self):
+        """Configure engine for post-game deep analysis."""
+        if self.is_available():
+            self.stockfish.set_depth(20)  # Deeper analysis
+            self.stockfish.set_time(3.0)   # More thorough
+            print("Engine configured for deep analysis")
+    
+    def set_skill_level(self, level: int):
         """
-        Comprehensive position analysis.
+        Set engine skill level (0-20, where 20 is strongest).
         
         Args:
-            fen: Position in FEN notation
-            
-        Returns:
-            Dictionary with analysis results
+            level: Skill level from 0 (weakest) to 20 (strongest)
         """
+        if self.is_available():
+            # Stockfish skill level goes from 0-20
+            skill = max(0, min(20, level))
+            try:
+                self.stockfish.set_skill_level(skill)
+                print(f"Engine skill level set to: {skill}")
+            except:
+                print("Could not set skill level")
+
+    def get_engine_info(self) -> dict:
+        """Get information about the engine."""
         if not self.is_available():
-            return {'error': 'Engine not available'}
-        
-        analysis = {
-            'best_move': self.get_best_move(fen),
-            'evaluation': self.get_evaluation(fen),
-            'top_moves': self.get_top_moves(fen, 3),
-            'fen': fen
-        }
-        
-        return analysis
+            return {"available": False}
     
+        return {
+            "available": True,
+            "depth": self.depth,
+            "path": self.engine_path,
+            "version": "Stockfish (version detection not implemented)"
+        }
+
+    # UTILITY FUNCTIONS
+
     def convert_uci_to_san(self, uci_move: str, fen: str) -> Optional[str]:
         """
         Convert UCI move to Standard Algebraic Notation.
@@ -207,6 +222,7 @@ class ChessEngine:
             Move in SAN format (e.g., 'e4') or None if conversion fails
         """
         try:
+    
             board = chess.Board(fen)
             move = chess.Move.from_uci(uci_move)
             if move in board.legal_moves:
@@ -264,22 +280,6 @@ class ChessEngine:
         
         return "\n".join(result)
     
-    def set_skill_level(self, level: int):
-        """
-        Set engine skill level (0-20, where 20 is strongest).
-        
-        Args:
-            level: Skill level from 0 (weakest) to 20 (strongest)
-        """
-        if self.is_available():
-            # Stockfish skill level goes from 0-20
-            skill = max(0, min(20, level))
-            try:
-                self.stockfish.set_skill_level(skill)
-                print(f"Engine skill level set to: {skill}")
-            except:
-                print("Could not set skill level")
-    
     def close(self):
         """Close the engine connection."""
         if self.stockfish:
@@ -288,3 +288,51 @@ class ChessEngine:
                 self.stockfish = None
             except:
                 pass
+
+    # PRIVATE METHODS
+    
+    def _initialize_engine(self):
+        """Initialize the Stockfish engine."""
+        try:
+            if self.engine_path and os.path.exists(self.engine_path):
+                self.stockfish = Stockfish(path=self.engine_path)
+                print(f"Stockfish engine initialized at: {self.engine_path}")
+            else:
+                # Direct path to stockfish.exe in the project directory
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                stockfish_path = os.path.join(current_dir, "stockfish.exe")
+                
+                if os.path.exists(stockfish_path):
+                    self.stockfish = Stockfish(path=stockfish_path)
+                    self.engine_path = stockfish_path
+                    print(f"Stockfish engine initialized at: {stockfish_path}")
+                else:
+                    # Fallback: try system PATH
+                    try:
+                        self.stockfish = Stockfish(path="stockfish")
+                        self.engine_path = "stockfish"
+                        print("Stockfish engine initialized from system PATH")
+                    except:
+                        self.stockfish = None
+                        
+            if self.stockfish is None:
+                print("Warning: Could not initialize Stockfish engine.")
+                print("Ensure stockfish.exe is in the project directory or system PATH.")
+                return
+                
+            # Configure engine settings
+            self.stockfish.set_depth(self.depth)
+            print(f"Stockfish engine initialized successfully at: {self.engine_path}")
+            
+        except Exception as e:
+            print(f"Error initializing engine: {e}")
+            self.stockfish = None
+
+    def recover_engine(self) -> bool:
+        """Attempt to recover from engine crash by reinitializing."""
+        if self.stockfish is not None:
+            return True  # Engine is fine
+        
+        print("Attempting to recover Stockfish engine...")
+        self._initialize_engine()
+        return self.stockfish is not None

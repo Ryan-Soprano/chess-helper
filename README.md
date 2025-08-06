@@ -1,16 +1,40 @@
 # Chess Helper Application
 
-A Python app to help during home chess games with move analysis and tracking.
+A Python chess analysis tool with Stockfish engine integration for move recommendations and game analysis. Perfect for analyzing positions, studying games, and improving your chess skills.
 
-## Setup
+## Features
 
-1. **Install Python dependencies:**
+- **Visual GUI**: Interactive chessboard with drag-and-drop movement
+- **Engine Analysis**: Real-time Stockfish analysis with best moves and evaluations
+- **Move History**: Track and review all moves in your games
+- **Multiple Interfaces**: Both GUI and CLI modes available
+- **Game Management**: Save/load games in PGN format
+- **Coordinate Display**: Square coordinates for chess novices
+- **Player Color Selection**: Choose to play as White or Black
+
+## Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Ryan-Soprano/chess-helper.git
+   cd chess-helper
+   ```
+
+2. **Install Python dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Stockfish Engine:**
-   The Stockfish engine (`stockfish.exe`) is already included in this project directory. No additional setup required!
+3. **Install Stockfish Engine:**
+   - **Windows**: Download from [Stockfish official site](https://stockfishchess.org/download/) and place `stockfish.exe` in the project directory
+   - **Linux/Mac**: Install via package manager or download binary
+   ```bash
+   # Ubuntu/Debian
+   sudo apt install stockfish
+   
+   # macOS
+   brew install stockfish
+   ```
 
 ## Usage
 
@@ -55,9 +79,13 @@ python main.py --stockfish-path /path/to/stockfish  # Use custom Stockfish path
 ## Requirements
 
 - Python 3.7+
-- python-chess
-- stockfish (Python package)
 - tkinter (usually included with Python)
+- python-chess
+- Stockfish engine binary
+
+## Contributing
+
+Feel free to submit issues and pull requests to improve the Chess Helper application!
 
 ## Troubleshooting
 
